@@ -1,0 +1,27 @@
+from setuptools import setup
+import versioneer
+
+setup(name='venv-pack',
+      version=versioneer.get_version(),
+      cmdclass=versioneer.get_cmdclass(),
+      maintainer='Jim Crist',
+      maintainer_email='jiminy.crist@gmail.com',
+      keywords='venv packaging',
+      classifiers=["Development Status :: 4 - Beta",
+                   "License :: OSI Approved :: BSD License",
+                   "Programming Language :: Python :: 2.7",
+                   "Programming Language :: Python :: 3.5",
+                   "Programming Language :: Python :: 3.6",
+                   "Programming Language :: Python :: 3.7",
+                   "Topic :: System :: Archiving :: Packaging",
+                   "Topic :: System :: Software Distribution",
+                   "Topic :: Software Development :: Build Tools"],
+      license='BSD',
+      description='Package virtual environments for redistribution',
+      long_description=open('README.rst').read(),
+      packages=['venv_pack'],
+      entry_points='''
+        [console_scripts]
+        venv-pack=venv_pack.cli:main
+      ''',
+      zip_safe=False)

@@ -1,0 +1,6 @@
+include venv_pack/*.py
+include setup.py
+include README.rst
+include LICENSE.txt
+include MANIFEST.in
+include versioneer.py
