@@ -1,0 +1,6 @@
+[run]
+omit =
+    venv_pack/tests/conftest.py
+    venv_pack/_version.py
+source = 
+    venv_pack
