@@ -177,7 +177,13 @@ def test_zip64(tmpdir):
         f.write(b'0')
 
     files = [File(source, 'foo%d' % i) for i in range(1 << 16)]
-    large_env = Env._new('large', files=files)
+    # Hack to build an env with a large environment
+    large_env = object.__new__(Env)
+    large_env.prefix = 'large'
+    large_env.kind = 'venv'
+    large_env._metadata = {}
+    large_env.files = files
+    large_env._excluded_files = []
 
     out_path = os.path.join(str(tmpdir), 'large.zip')
 
