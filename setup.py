@@ -20,6 +20,8 @@ setup(name='venv-pack',
       description='Package virtual environments for redistribution',
       long_description=open('README.rst').read(),
       packages=['venv_pack'],
+      package_data={'venv_pack': ['scripts/*',
+                                  'scripts/common/*']}
       entry_points='''
         [console_scripts]
         venv-pack=venv_pack.cli:main
