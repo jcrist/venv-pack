@@ -9,22 +9,22 @@ import pytest
 from venv_pack import Env, VenvPackException, pack, File
 from venv_pack.core import find_site_packages
 
-from .conftest import simple_path, editable_path, rel_env_dir, env_dir
+from .conftest import venv_path, venv_editable_path, rel_env_dir, env_dir
 
 
-site_packages = os.path.relpath(find_site_packages(simple_path), simple_path)
+site_packages = os.path.relpath(find_site_packages(venv_path), venv_path)
 
 
 @pytest.fixture(scope="module")
-def simple_env():
-    return Env(simple_path)
+def venv_env():
+    return Env(venv_path)
 
 
 def test_from_prefix():
-    env = Env(os.path.join(rel_env_dir, 'simple'))
+    env = Env(os.path.join(rel_env_dir, 'venv'))
     assert len(env)
     # relative path is normalized
-    assert env.prefix == simple_path
+    assert env.prefix == venv_path
 
     # Path is missing
     with pytest.raises(VenvPackException):
@@ -37,72 +37,72 @@ def test_from_prefix():
 
 def test_errors_editable_packages():
     with pytest.raises(VenvPackException) as exc:
-        Env(editable_path)
+        Env(venv_editable_path)
 
     assert "Editable packages found" in str(exc.value)
 
 
-def test_env_properties(simple_env):
-    assert simple_env.name == 'simple'
-    assert simple_env.prefix == simple_path
+def test_env_properties(venv_env):
+    assert venv_env.name == 'venv'
+    assert venv_env.prefix == venv_path
 
     # Env has a length
-    assert len(simple_env) == len(simple_env.files)
+    assert len(venv_env) == len(venv_env.files)
 
     # Env is iterable
-    assert len(list(simple_env)) == len(simple_env)
+    assert len(list(venv_env)) == len(venv_env)
 
     # Smoketest repr
-    assert 'Env<' in repr(simple_env)
+    assert 'Env<' in repr(venv_env)
 
 
-def test_include_exclude(simple_env):
-    old_len = len(simple_env)
-    env2 = simple_env.exclude("*.pyc")
+def test_include_exclude(venv_env):
+    old_len = len(venv_env)
+    env2 = venv_env.exclude("*.pyc")
     # No mutation
-    assert len(simple_env) == old_len
-    assert env2 is not simple_env
+    assert len(venv_env) == old_len
+    assert env2 is not venv_env
 
-    assert len(env2) < len(simple_env)
+    assert len(env2) < len(venv_env)
 
     # Re-add the removed files, envs are equivalent
-    assert len(env2.include("*.pyc")) == len(simple_env)
+    assert len(env2.include("*.pyc")) == len(venv_env)
 
     env3 = env2.exclude("%s/toolz/*" % site_packages)
     env4 = env3.include("%s/toolz/__init__.py" % site_packages)
     assert len(env3) + 1 == len(env4)
 
 
-def test_output_and_format(simple_env):
-    output, format = simple_env._output_and_format()
-    assert output == 'simple.tar.gz'
+def test_output_and_format(venv_env):
+    output, format = venv_env._output_and_format()
+    assert output == 'venv.tar.gz'
     assert format == 'tar.gz'
 
     for format in ['tar.gz', 'tar.bz2', 'tar', 'zip']:
-        output = os.extsep.join([simple_env.name, format])
+        output = os.extsep.join([venv_env.name, format])
 
-        o, f = simple_env._output_and_format(format=format)
+        o, f = venv_env._output_and_format(format=format)
         assert f == format
         assert o == output
 
-        o, f = simple_env._output_and_format(output=output)
+        o, f = venv_env._output_and_format(output=output)
         assert o == output
         assert f == format
 
-        o, f = simple_env._output_and_format(output='foo.zip', format=format)
+        o, f = venv_env._output_and_format(output='foo.zip', format=format)
         assert f == format
         assert o == 'foo.zip'
 
     with pytest.raises(VenvPackException):
-        simple_env._output_and_format(format='foo')
+        venv_env._output_and_format(format='foo')
 
     with pytest.raises(VenvPackException):
-        simple_env._output_and_format(output='foo.bar')
+        venv_env._output_and_format(output='foo.bar')
 
 
-def test_roundtrip(tmpdir, simple_env):
-    out_path = os.path.join(str(tmpdir), 'simple.tar')
-    simple_env.pack(out_path)
+def test_roundtrip(tmpdir, venv_env):
+    out_path = os.path.join(str(tmpdir), 'venv.tar')
+    venv_env.pack(out_path)
     assert os.path.exists(out_path)
     assert tarfile.is_tarfile(out_path)
 
@@ -131,10 +131,10 @@ def test_roundtrip(tmpdir, simple_env):
     assert out == 'Done\n'
 
 
-def test_pack_exceptions(simple_env):
+def test_pack_exceptions(venv_env):
     # Unknown filter type
     with pytest.raises(VenvPackException):
-        pack(prefix=simple_path,
+        pack(prefix=venv_path,
              filters=[("exclude", "*.py"),
                       ("foo", "*.pyc")])
 
@@ -163,27 +163,27 @@ def test_zip64(tmpdir):
     assert os.path.exists(out_path)
 
 
-def test_force(tmpdir, simple_env):
-    already_exists = os.path.join(str(tmpdir), 'simple.tar')
+def test_force(tmpdir, venv_env):
+    already_exists = os.path.join(str(tmpdir), 'venv.tar')
     with open(already_exists, 'wb'):
         pass
 
     # file already exists
     with pytest.raises(VenvPackException):
-        simple_env.pack(output=already_exists)
+        venv_env.pack(output=already_exists)
 
-    simple_env.pack(output=already_exists, force=True)
+    venv_env.pack(output=already_exists, force=True)
     assert tarfile.is_tarfile(already_exists)
 
 
-def test_pack(tmpdir, simple_env):
-    out_path = os.path.join(str(tmpdir), 'simple.tar')
+def test_pack(tmpdir, venv_env):
+    out_path = os.path.join(str(tmpdir), 'venv.tar')
 
     exclude1 = "*.py"
     exclude2 = "*.pyc"
     include = "%s/toolz/*" % site_packages
 
-    res = pack(prefix=simple_path,
+    res = pack(prefix=venv_path,
                output=out_path,
                filters=[("exclude", exclude1),
                         ("exclude", exclude2),
@@ -196,7 +196,7 @@ def test_pack(tmpdir, simple_env):
     with tarfile.open(out_path) as fil:
         paths = fil.getnames()
 
-    filtered = (simple_env
+    filtered = (venv_env
                 .exclude(exclude1)
                 .exclude(exclude2)
                 .include(include))

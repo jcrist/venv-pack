@@ -9,8 +9,11 @@ test_dir = os.path.dirname(os.path.abspath(__file__))
 rel_env_dir = os.path.join(test_dir, '..', '..', 'testing', 'environments')
 env_dir = os.path.abspath(rel_env_dir)
 
-simple_path = os.path.join(env_dir, 'simple')
-editable_path = os.path.join(env_dir, 'editable')
+venv_path = os.path.join(env_dir, 'venv')
+venv_editable_path = os.path.join(env_dir, 'venv-editable')
+venv_system_path = os.path.join(env_dir, 'venv-system')
+virtualenv_path = os.path.join(env_dir, 'virtualenv')
+virtualenv_system_path = os.path.join(env_dir, 'virtualenv-system')
 
 
 def pytest_addoption(parser):
