@@ -1,4 +1,5 @@
 include venv_pack/*.py
+include venv_pack/CONDA_PACK_LICENSE.txt
 graft venv_pack/scripts
 include setup.py
 include README.rst
