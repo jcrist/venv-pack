@@ -18,12 +18,11 @@ jobs:
 
 install:
   - source testing/install_conda.sh
-  - conda create -n testenv python=$PYTHON -y
+  - conda create -n testenv python=$PYTHON pytest flake8 virtualenv -y
   - source activate testenv
-  - pip install -U pytest flake8 virtualenv pip
-  - ./testing/setup_envs.sh
   - pip install .
   - pip list
+  - ./testing/setup_envs.sh
 
 script:
   - source activate testenv
