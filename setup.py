@@ -24,6 +24,6 @@ setup(name='venv-pack',
                                   'scripts/common/*']},
       entry_points='''
         [console_scripts]
-        venv-pack=venv_pack.cli:main
+        venv-pack=venv_pack.__main__:main
       ''',
       zip_safe=False)
