@@ -118,7 +118,7 @@ def main(args=None, pack=pack):
              filters=args.filters)
     except VenvPackException as e:
         fail("VenvPackError: %s" % e)
-    except KeyboardInterrupt as e:
+    except KeyboardInterrupt as e:  # pragma: nocover
         fail("Interrupted")
     except Exception as e:
         fail(traceback.format_exc())
