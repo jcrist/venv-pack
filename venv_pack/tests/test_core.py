@@ -54,7 +54,7 @@ def test_env_properties(simple_env):
 
 def test_include_exclude(simple_env):
     old_len = len(simple_env)
-    env2 = simple_env.exclude("*.py")
+    env2 = simple_env.exclude("*.pyc")
     # No mutation
     assert len(simple_env) == old_len
     assert env2 is not simple_env
@@ -62,7 +62,7 @@ def test_include_exclude(simple_env):
     assert len(env2) < len(simple_env)
 
     # Re-add the removed files, envs are equivalent
-    assert len(env2.include("*.py")) == len(simple_env)
+    assert len(env2.include("*.pyc")) == len(simple_env)
 
     env3 = env2.exclude("lib/python3.6/site-packages/toolz/*")
     env4 = env3.include("lib/python3.6/site-packages/toolz/__init__.py")
