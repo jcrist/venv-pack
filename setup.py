@@ -4,6 +4,8 @@ import versioneer
 setup(name='venv-pack',
       version=versioneer.get_version(),
       cmdclass=versioneer.get_cmdclass(),
+      url='https://jcrist.github.io/venv-pack/',
+      project_urls={"Source Code": "https://github.com/jcrist/venv-pack/"},
       maintainer='Jim Crist',
       maintainer_email='jiminy.crist@gmail.com',
       keywords='venv packaging',
