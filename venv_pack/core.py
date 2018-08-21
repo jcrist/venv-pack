@@ -110,7 +110,7 @@ class Env(object):
 
         >>> env = (Env().exclude("*.pyx")
         ...             .include("lib/python3.6/site-packages/cytoolz/*.pyx"))
-        Env<'~/miniconda/envs/example', 1234 files>
+        Env<'/full/path/to/environment', 1234 files>
 
         See Also
         --------
