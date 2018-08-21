@@ -149,18 +149,6 @@ def test_roundtrip(tmpdir, prefix, system):
         assert shebang == '#!/usr/bin/env python'
 
     # Check bash scripts all don't error
-    command = ("which python && "
-               "python --version && "
-               ". {path}/bin/activate && "
-               "which python && "
-               "python --version && "
-               "deactivate").format(path=extract_path)
-
-    out = subprocess.check_output(['/usr/bin/env', 'bash', '-c', command],
-                                  stderr=subprocess.STDOUT).decode()
-    print(out)
-
-    # Check bash scripts all don't error
     packages = 'pytest, toolz' if system else 'toolz'
     command = (". {path}/bin/activate && "
                "python -c 'import {packages}' && "

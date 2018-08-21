@@ -25,16 +25,16 @@ fi
 
 echo "Creating virtualenv environment with editable packages"
 envpath="$envdir/editable"
-virtualenv $envpath
+python -m virtualenv $envpath
 ${envpath}/bin/pip install toolz
 pushd "${current_dir}/.." && ${envpath}/bin/python setup.py develop && popd
 
 echo "Creating virtualenv environment"
 envpath="$envdir/virtualenv"
-virtualenv $envpath
+python -m virtualenv $envpath
 ${envpath}/bin/pip install toolz
 
 echo "Creating virtualenv environment with system site-packages"
 envpath="$envdir/virtualenv-system"
-virtualenv --system-site-packages $envpath
+python -m virtualenv --system-site-packages $envpath
 ${envpath}/bin/pip install toolz
