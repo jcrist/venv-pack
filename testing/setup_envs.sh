@@ -1,4 +1,6 @@
 #/usr/bin/env bash
+set -xe
+
 echo "== Setting up environments for testing =="
 
 current_dir="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
