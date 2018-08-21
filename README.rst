@@ -1,6 +1,8 @@
 Venv-Pack
 ==========
 
+|Build Status| |PyPI Badge|
+
 ``venv-pack`` is a command line tool for creating relocatable `virtual
 environments`_.
 
@@ -15,3 +17,8 @@ New BSD. See the
 .. _virtual environments: https://docs.python.org/3/tutorial/venv.html
 .. _conda environments: https://conda.io
 .. _conda-pack: https://conda.github.io/conda-pack/
+
+.. |Build Status| image:: https://travis-ci.org/jcrist/venv-pack.svg?branch=master
+   :target: https://travis-ci.org/jcrist/venv-pack
+.. |PyPI Badge| image:: https://img.shields.io/pypi/v/venv-pack.svg
+   :target: https://pypi.org/project/venv-pack/
