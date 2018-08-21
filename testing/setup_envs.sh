@@ -3,30 +3,38 @@ set -e
 
 echo "== Setting up environments for testing =="
 
+PY_VERSION=`python -c "import sys; print('%d.%d' % sys.version_info[:2])"`
+
 current_dir="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 
-echo "Creating venv environment"
-envpath="${current_dir}/environments/venv"
-python -m venv $envpath
-${envpath}/bin/pip install toolz
+envdir="$current_dir/environments$PY_VERSION"
 
-echo "Creating venv environment with system site-packages"
-envpath="${current_dir}/environments/venv-system"
-python -m venv $envpath
-${envpath}/bin/pip install toolz
+echo "Python version $PY_VERSION"
 
-echo "Creating venv environment with editable packages"
-envpath="${current_dir}/environments/venv-editable"
-python -m venv $envpath
+if [ $PY_VERSION != "2.7" ]; then
+    echo "Creating venv environment"
+    envpath="$envdir/venv"
+    python -m venv $envpath
+    ${envpath}/bin/pip install toolz
+
+    echo "Creating venv environment with system site-packages"
+    envpath="$envdir/venv-system"
+    python -m venv --system-site-packages $envpath
+    ${envpath}/bin/pip install toolz
+fi
+
+echo "Creating virtualenv environment with editable packages"
+envpath="$envdir/editable"
+virtualenv $envpath
 ${envpath}/bin/pip install toolz
 pushd "${current_dir}/.." && ${envpath}/bin/python setup.py develop && popd
 
 echo "Creating virtualenv environment"
-envpath="${current_dir}/environments/virtualenv"
+envpath="$envdir/virtualenv"
 virtualenv $envpath
 ${envpath}/bin/pip install toolz
 
 echo "Creating virtualenv environment with system site-packages"
-envpath="${current_dir}/environments/virtualenv-system"
-virtualenv $envpath
+envpath="$envdir/virtualenv-system"
+virtualenv --system-site-packages $envpath
 ${envpath}/bin/pip install toolz

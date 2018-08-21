@@ -1,19 +1,23 @@
 from __future__ import print_function, division, absolute_import
 
 import os
+import sys
 
 import pytest
 
+PY_VERSION = '%d.%d' % sys.version_info[:2]
+
 test_dir = os.path.dirname(os.path.abspath(__file__))
 
-rel_env_dir = os.path.join(test_dir, '..', '..', 'testing', 'environments')
+rel_env_dir = os.path.join(test_dir, '..', '..', 'testing',
+                           'environments' + PY_VERSION)
 env_dir = os.path.abspath(rel_env_dir)
 
 venv_path = os.path.join(env_dir, 'venv')
-venv_editable_path = os.path.join(env_dir, 'venv-editable')
 venv_system_path = os.path.join(env_dir, 'venv-system')
 virtualenv_path = os.path.join(env_dir, 'virtualenv')
 virtualenv_system_path = os.path.join(env_dir, 'virtualenv-system')
+editable_path = os.path.join(env_dir, 'editable')
 
 
 def pytest_addoption(parser):

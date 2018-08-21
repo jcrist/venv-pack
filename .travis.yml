@@ -6,6 +6,8 @@ jobs:
   fast_finish: true
   include:
     - env:
+        PYTHON=2.7
+    - env:
         PYTHON=3.5
     - env:
         PYTHON=3.6
