@@ -20,9 +20,10 @@ install:
   - source testing/install_conda.sh
   - conda create -n testenv python=$PYTHON -y
   - source activate testenv
-  - pip install pytest flake8 virtualenv
+  - pip install -U pytest flake8 virtualenv pip
   - ./testing/setup_envs.sh
   - pip install .
+  - pip list
 
 script:
   - source activate testenv
