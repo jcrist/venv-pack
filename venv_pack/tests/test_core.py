@@ -7,8 +7,12 @@ import tarfile
 import pytest
 
 from venv_pack import Env, VenvPackException, pack, File
+from venv_pack.core import find_site_packages
 
 from .conftest import simple_path, editable_path, rel_env_dir, env_dir
+
+
+site_packages = os.path.relpath(find_site_packages(simple_path), simple_path)
 
 
 @pytest.fixture(scope="module")
@@ -64,8 +68,8 @@ def test_include_exclude(simple_env):
     # Re-add the removed files, envs are equivalent
     assert len(env2.include("*.pyc")) == len(simple_env)
 
-    env3 = env2.exclude("lib/python3.6/site-packages/toolz/*")
-    env4 = env3.include("lib/python3.6/site-packages/toolz/__init__.py")
+    env3 = env2.exclude("%s/toolz/*" % site_packages)
+    env4 = env3.include("%s/toolz/__init__.py" % site_packages)
     assert len(env3) + 1 == len(env4)
 
 
@@ -118,7 +122,7 @@ def test_roundtrip(tmpdir, simple_env):
 
     # Check bash scripts all don't error
     command = (". {path}/bin/activate && "
-               "python -c 'import toolz, cytoolz' && "
+               "python -c 'import toolz' && "
                "deactivate && "
                "echo 'Done'").format(path=extract_path)
 
@@ -177,7 +181,7 @@ def test_pack(tmpdir, simple_env):
 
     exclude1 = "*.py"
     exclude2 = "*.pyc"
-    include = "lib/python3.6/site-packages/toolz/*"
+    include = "%s/toolz/*" % site_packages
 
     res = pack(prefix=simple_path,
                output=out_path,

@@ -1,0 +1,27 @@
+language: python
+sudo: false
+os: linux
+
+jobs:
+  fast_finish: true
+  include:
+    - env:
+        PYTHON=3.5
+    - env:
+        PYTHON=3.6
+
+install:
+  - source testing/install_conda.sh
+  - conda create -n testenv python=$PYTHON -y
+  - source activate testenv
+  - ./testing/setup_envs.sh
+  - pip install pytest flake8
+  - pip install .
+
+script:
+  - source activate testenv
+  - py.test venv_pack --runslow -s -vv
+  - flake8 venv_pack
+
+notifications:
+  email: false
