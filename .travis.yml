@@ -2,6 +2,10 @@ language: python
 sudo: false
 os: linux
 
+branches:
+    only:
+        - master
+
 jobs:
   fast_finish: true
   include:
