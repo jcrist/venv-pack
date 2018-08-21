@@ -6,6 +6,10 @@ branches:
     only:
         - master
 
+env:
+    global:
+        - secure: "mwAefLGtK0kTgstNU8/xVpoEleRZLpWZr2xBlhMr4H/3lPkNrKQno1I6PT5ADdvDtJeLo0jBKaH9Ooe+IYZovo1J5qY0YEEpSFdpovHOyAPO/YAA8fzoWT8IIhbU9/4YNGsQ3Ldvvtl0oSsCuyIl4Iopc2gBHlJHakhQQ0ILuCGHmQ6faqk+WUPioEfVjSjmzKQb7gFZRXszZueDxnljiDfL4txZyDMwQd5sQuok+F37cAdncrwnGa+bwcSOQSdrdsBIL2nmnEsaD9q+7cRk9uotn7Qf4ICcq12PChK6/LazeNTmeU2SR3HO0Wo74XU1WuDzvYdFwNZ6D6B4VnkvSgB+hl/x62P4JW8R1Y/dvsvI90vaNKnJFjrIOV6uhiTrf5TXVVfsivYhdGYotzgLjFK7fm6MCwNhagACl5NMTyGAAwK4QBFD+U9YxPOQbKIbdt1FAZsFcp0FZos/WCtiWIG7zQQkcsHfklwmDaCVZ7zMCC7+XmustMS34gUJHXDlqCNbYcMiuj7Ybn2QAbfRrVJAJtOHDqqmEOBjIHfr6srPO4q4jHJqVdZ4fM1hvDizzWLXqObyH9KrijD0crygEtmpzwJUq435ZzwzZM6GhFHP0UrtuVF4d9PAKhxa50nUAl0YI+m/KNU2Mh2yvgeLzllVUbeB7NO0gmBNhJuZ98Q="
+
 jobs:
   fast_finish: true
   include:
@@ -15,11 +19,16 @@ jobs:
         PYTHON=3.5
     - env:
         PYTHON=3.6
+        DOCS=true
 
 install:
   - source testing/install_conda.sh
   - conda create -n testenv python=$PYTHON pytest flake8 virtualenv -y
   - source activate testenv
+  - |
+    if [[ "$DOCS" == "true" ]]; then
+        pip install sphinx numpydoc sphinxcontrib.autoprogram doctr
+    fi
   - pip install .
   - pip list
   - ./testing/setup_envs.sh
@@ -28,6 +37,16 @@ script:
   - source activate testenv
   - py.test venv_pack --runslow -s -vv
   - flake8 venv_pack
+  - |
+    if [[ "$DOCS" == "true" ]]; then
+        pushd docs && make html && popd
+    fi
+
+after_success:
+  - |
+    if [[ "$TRAVIS_BRANCH" == "master" && "$TRAVIS_EVENT_TYPE" == "push" ]]; then
+      doctr deploy . --built-docs docs/build/html/
+    fi
 
 notifications:
   email: false
