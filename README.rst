@@ -3,7 +3,7 @@ Venv-Pack
 
 |Build Status| |PyPI Badge|
 
-``venv-pack`` is a command line tool for creating relocatable `virtual
+``venv-pack`` is a command-line tool for creating relocatable `virtual
 environments`_.
 
 See `conda-pack`_ for a similar tool for `conda environments`_.
