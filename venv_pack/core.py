@@ -72,6 +72,7 @@ class Env(object):
         self.prefix = prefix
         self.files = files
         self._excluded_files = excluded_files or []
+        return self
 
     def __repr__(self):
         return 'Env<%r, %d files>' % (self.prefix, len(self))
