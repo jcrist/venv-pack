@@ -1,10 +1,16 @@
-language: python
+language: minimal
 sudo: false
 os: linux
+
+branches:
+    only:
+        - master
 
 jobs:
   fast_finish: true
   include:
+    - env:
+        PYTHON=2.7
     - env:
         PYTHON=3.5
     - env:
@@ -12,11 +18,11 @@ jobs:
 
 install:
   - source testing/install_conda.sh
-  - conda create -n testenv python=$PYTHON -y
+  - conda create -n testenv python=$PYTHON pytest flake8 virtualenv -y
   - source activate testenv
-  - ./testing/setup_envs.sh
-  - pip install pytest flake8
   - pip install .
+  - pip list
+  - ./testing/setup_envs.sh
 
 script:
   - source activate testenv

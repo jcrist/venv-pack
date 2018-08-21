@@ -1,4 +1,4 @@
-testing/environments/*
+testing/environments*/*
 build
 dist
 venv_pack.egg-info

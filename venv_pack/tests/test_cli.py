@@ -8,7 +8,7 @@ import pytest
 import venv_pack
 from venv_pack.__main__ import main
 
-from .conftest import simple_path
+from .conftest import virtualenv_path
 
 
 def test_help(capsys):
@@ -55,10 +55,10 @@ def test_parse_include_exclude():
 
 
 def test_cli_roundtrip(capsys, tmpdir):
-    out_path = os.path.join(str(tmpdir), 'simple.tar')
+    out_path = os.path.join(str(tmpdir), 'environment.tar')
 
     with pytest.raises(SystemExit) as exc:
-        main(["-p", simple_path, "-o", out_path])
+        main(["-p", virtualenv_path, "-o", out_path])
 
     assert exc.value.code == 0
 
@@ -75,10 +75,10 @@ def test_cli_roundtrip(capsys, tmpdir):
 
 
 def test_quiet(capsys, tmpdir):
-    out_path = os.path.join(str(tmpdir), 'simple.tar')
+    out_path = os.path.join(str(tmpdir), 'environment.tar')
 
     with pytest.raises(SystemExit) as exc:
-        main(["-p", simple_path, "-o", out_path, "-q"])
+        main(["-p", virtualenv_path, "-o", out_path, "-q"])
 
     assert exc.value.code == 0
 

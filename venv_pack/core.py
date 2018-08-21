@@ -59,19 +59,25 @@ class Env(object):
     >>> Env().pack(output="environment.tar.gz")
     "/full/path/to/environment.tar.gz"
     """
+    __slots__ = ('prefix', 'files', 'kind', '_metadata', '_excluded_files')
+
     def __init__(self, prefix=None):
-        prefix, files = load_environment(prefix)
+        prefix, files, kind, metadata = load_environment(prefix)
 
         self.prefix = prefix
         self.files = files
+        self.kind = kind
+        self._metadata = metadata
         self._excluded_files = []
 
     @classmethod
-    def _new(cls, prefix, files, excluded_files=None):
+    def _copy_with_files(cls, orig, files, excluded_files):
         self = object.__new__(Env)
-        self.prefix = prefix
+        self.prefix = orig.prefix
+        self.kind = orig.kind
+        self._metadata = orig._metadata
         self.files = files
-        self._excluded_files = excluded_files or []
+        self._excluded_files = excluded_files
         return self
 
     def __repr__(self):
@@ -126,7 +132,7 @@ class Env(object):
                 exclude(f)
             else:
                 include(f)
-        return Env._new(self.prefix, files, excluded)
+        return Env._copy_with_files(self, files, excluded)
 
     def include(self, pattern):
         """Re-add all excluded files that match ``pattern``
@@ -155,7 +161,7 @@ class Env(object):
                 include(f)
             else:
                 exclude(f)
-        return Env._new(self.prefix, files, excluded)
+        return Env._copy_with_files(self, files, excluded)
 
     def _output_and_format(self, output=None, format='infer'):
         if output is None and format == 'infer':
@@ -233,7 +239,7 @@ class Env(object):
                              compress_level=compress_level,
                              zip_symlinks=zip_symlinks,
                              zip_64=zip_64) as arc:
-                    packer = Packer(self.prefix, arc)
+                    packer = Packer(self, arc)
                     with progressbar(self.files, enabled=verbose) as files:
                         try:
                             for f in files:
@@ -332,27 +338,46 @@ def pack(prefix=None, output=None, format='infer', verbose=False, force=False,
                     zip_symlinks=zip_symlinks, zip_64=zip_64)
 
 
-def normalize_prefix(prefix=None):
+def check_prefix(prefix=None):
     if prefix is None:
-        if sys.base_prefix == sys.prefix:
+        if hasattr(sys, 'real_prefix'):
+            return check_virtualenv(sys.prefix)
+        elif getattr(sys, 'base_prefix', None) != sys.prefix:
+            return check_venv(sys.prefix)
+        else:
             raise VenvPackException("Current environment is not a "
                                     "virtual environment")
-        prefix = sys.prefix
 
     prefix = os.path.abspath(prefix)
 
     if not os.path.exists(prefix):
         raise VenvPackException("Environment path %r doesn't exist" % prefix)
 
+    for check in [check_venv, check_virtualenv]:
+        try:
+            return check(prefix)
+        except VenvPackException:
+            pass
+
+    raise VenvPackException("%r is not a valid virtual environment" % prefix)
+
+
+def check_venv(prefix):
     if not os.path.exists(os.path.join(prefix, 'pyvenv.cfg')):
         raise VenvPackException("%r is not a valid virtual environment" % prefix)
+    return prefix, 'venv', find_python_lib(prefix)
 
-    return prefix
+
+def check_virtualenv(prefix):
+    python_lib = find_python_lib(prefix)
+    if not os.path.exists(os.path.join(python_lib, 'orig-prefix.txt')):
+        raise VenvPackException("%r is not a valid virtual environment" % prefix)
+    return prefix, 'virtualenv', python_lib
 
 
-def find_site_packages(prefix):
+def find_python_lib(prefix):
     if on_win:
-        return 'Lib/site-packages'
+        return os.path.join(prefix, 'Lib/site-packages')
 
     # Ensure there is at most one version of python installed
     pythons = glob.glob(os.path.join(prefix, 'lib', 'python*'))
@@ -364,11 +389,11 @@ def find_site_packages(prefix):
         raise VenvPackException("Unexpected failure, no version of "
                                 "python found in prefix %r" % prefix)
 
-    return os.path.join(pythons[0], 'site-packages')
+    return pythons[0]
 
 
-def check_no_editable_packages(prefix, site_packages):
-    pth_files = glob.glob(os.path.join(prefix, site_packages, '*.pth'))
+def check_no_editable_packages(prefix, python_lib):
+    pth_files = glob.glob(os.path.join(python_lib, 'site-packages', '*.pth'))
     editable_packages = set()
     for pth_fil in pth_files:
         dirname = os.path.dirname(pth_fil)
@@ -392,14 +417,16 @@ def check_no_editable_packages(prefix, site_packages):
 def load_environment(prefix):
     from os.path import relpath, join, isfile, islink
 
-    prefix = normalize_prefix(prefix)
+    prefix, kind, python_lib = check_prefix(prefix)
 
-    site_packages = find_site_packages(prefix)
-    check_no_editable_packages(prefix, site_packages)
+    check_no_editable_packages(prefix, python_lib)
 
-    # Files to ginore
+    # Files to ignore
     remove = {join(BIN_DIR, f) for f in ['activate', 'activate.csh',
-                                         'activate.fish', 'deactivate']}
+                                         'activate.fish']}
+
+    if kind == 'virtualenv':
+        remove.add(join(python_lib, 'orig-prefix.txt'))
 
     res = []
 
@@ -428,7 +455,10 @@ def load_environment(prefix):
              for p in res
              if not (p in remove or p.endswith('~') or p.endswith('.DS_STORE'))]
 
-    return prefix, files
+    # Extra metadata maybed needed by the packing process
+    metadata = {'python_lib': python_lib}
+
+    return prefix, files, kind, metadata
 
 
 def rewrite_shebang(data, target, prefix):
@@ -463,10 +493,9 @@ def rewrite_shebang(data, target, prefix):
 
 
 class Packer(object):
-    def __init__(self, prefix, archive):
-        self.prefix = prefix
+    def __init__(self, env, archive):
+        self.prefix = env.prefix
         self.archive = archive
-        self.prefixes = []
 
     def add(self, file):
         if (file.target.startswith(BIN_DIR) and not
