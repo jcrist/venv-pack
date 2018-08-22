@@ -45,7 +45,7 @@ Package the environment into a ``tar.gz`` archive:
 
 .. code-block:: bash
 
-    (example) $ venv-pack -p example -o environment.tar.gz
+    (example) $ venv-pack -o environment.tar.gz
     Collecting packages...
     Packing environment at '/home/jcrist/example' to 'environment.tar.gz'
     [########################################] | 100% Completed |  16.6s
