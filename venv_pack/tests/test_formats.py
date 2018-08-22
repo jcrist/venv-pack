@@ -52,6 +52,11 @@ def root_and_paths(tmpdir_factory):
     return root, paths
 
 
+def checklink(path, sol):
+    assert islink(path)
+    assert os.readlink(path) == sol
+
+
 def check(out_dir, links=False):
     assert exists(join(out_dir, "empty_dir"))
     assert isdir(join(out_dir, "empty_dir"))
@@ -64,15 +69,9 @@ def check(out_dir, links=False):
     assert isfile(join(out_dir, "link_to_file"))
 
     if links:
-        def checklink(path, sol):
-            path = join(out_dir, "link_to_dir")
-            sol = join(out_dir, sol)
-            assert islink(path)
-            return join(out_dir, os.readlink(path)) == sol
-
-        checklink("link_to_dir", "dir")
-        checklink("link_to_file", "file")
-        checklink("link_to_empty_dir", "empty_dir")
+        checklink(join(out_dir, "link_to_dir"), "dir")
+        checklink(join(out_dir, "link_to_file"), "file")
+        checklink(join(out_dir, "link_to_empty_dir"), "empty_dir")
     else:
         # Check that contents of directories are same
         assert set(os.listdir(join(out_dir, "link_to_dir"))) == {'one', 'two'}
@@ -109,6 +108,13 @@ def test_format(tmpdir, format, symlinks, root_and_paths):
             arc.add_bytes(join(root, "file"),
                           b"foo bar",
                           join("dir", "from_bytes"))
+            if symlinks:
+                arc.add_link(join(root, "link_to_file"),
+                             join("dir", "one"),
+                             "manual_link_to_file")
+                arc.add_link(join(root, "link_to_dir"),
+                             "empty_dir",
+                             "manual_link_to_dir")
 
     if format == 'zip':
         if symlinks:
@@ -124,3 +130,8 @@ def test_format(tmpdir, format, symlinks, root_and_paths):
     assert isfile(join(out_dir, "dir", "from_bytes"))
     with open(join(out_dir, "dir", "from_bytes"), 'rb') as fil:
         assert fil.read() == b"foo bar"
+
+    if symlinks:
+        checklink(join(out_dir, "manual_link_to_dir"), "empty_dir")
+        checklink(join(out_dir, "manual_link_to_file"),
+                  join("dir", "one"))

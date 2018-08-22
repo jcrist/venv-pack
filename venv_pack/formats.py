@@ -47,6 +47,11 @@ class TarArchive(object):
         info.size = len(sourcebytes)
         self.archive.addfile(info, BytesIO(sourcebytes))
 
+    def add_link(self, source, sourcelink, target):
+        info = self.archive.gettarinfo(source, target)
+        info.linkname = sourcelink
+        self.archive.addfile(info)
+
 
 class ZipArchive(object):
     def __init__(self, fileobj, zip_symlinks=False, zip_64=True):
@@ -63,6 +68,18 @@ class ZipArchive(object):
     def __exit__(self, *args):
         self.archive.close()
 
+    def add_link(self, source, sourcelink, target, st=None):
+        if not self.zip_symlinks:
+            raise ValueError("Can't add a symlink with zip-links disabled")
+        if st is None:
+            st = os.lstat(source)
+        info = zipfile.ZipInfo(target)
+        info.create_system = 3
+        info.external_attr = (st.st_mode & 0xFFFF) << 16
+        if os.path.isdir(source):
+            info.external_attr |= 0x10  # MS-DOS directory flag
+        self.archive.writestr(info, sourcelink)
+
     def add(self, source, target):
         try:
             st = os.lstat(source)
@@ -72,12 +89,7 @@ class ZipArchive(object):
 
         if is_link:
             if self.zip_symlinks:
-                info = zipfile.ZipInfo(target)
-                info.create_system = 3
-                info.external_attr = (st.st_mode & 0xFFFF) << 16
-                if os.path.isdir(source):
-                    info.external_attr |= 0x10  # MS-DOS directory flag
-                self.archive.writestr(info, os.readlink(source))
+                self.add_link(source, os.readlink(source), target, st=st)
             else:
                 if os.path.isdir(source):
                     for root, dirs, files in os.walk(source, followlinks=True):
