@@ -44,6 +44,21 @@ def test_check_prefix_virtualenv(path):
     assert kind == 'virtualenv'
 
 
+@pytest.mark.parametrize('env_path, env_kind',
+                         [(virtualenv_path, 'virtualenv')] +
+                         ([] if PY2 else [(venv_path, 'venv')]))
+def test_check_prefix_from_env(env_path, env_kind):
+    try:
+        old = os.environ.get('VIRTUAL_ENV')
+        os.environ['VIRTUAL_ENV'] = env_path
+        prefix, kind, _ = check_prefix()
+        assert prefix == env_path
+        assert kind == env_kind
+    finally:
+        if old is not None:
+            os.environ['VIRTUAL_ENV'] = old
+
+
 def test_check_prefix_errors():
     # Path is missing
     with pytest.raises(VenvPackException):
