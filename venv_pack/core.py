@@ -340,11 +340,8 @@ def pack(prefix=None, output=None, format='infer', verbose=False, force=False,
 
 def check_prefix(prefix=None):
     if prefix is None:
-        if hasattr(sys, 'real_prefix'):
-            return check_virtualenv(sys.prefix)
-        elif getattr(sys, 'base_prefix', None) != sys.prefix:
-            return check_venv(sys.prefix)
-        else:
+        prefix = os.environ.get('VIRTUAL_ENV')
+        if prefix is None:
             raise VenvPackException("Current environment is not a "
                                     "virtual environment")
 
