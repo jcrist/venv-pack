@@ -121,3 +121,4 @@ This tool is new, and has a few caveats.
 
     api.rst
     cli.rst
+    spark.rst
