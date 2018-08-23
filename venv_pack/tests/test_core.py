@@ -4,11 +4,12 @@ import os
 import subprocess
 import sys
 import tarfile
+from glob import glob
 
 import pytest
 
 from venv_pack import Env, VenvPackException, pack, File
-from venv_pack.core import find_python_lib, check_prefix
+from venv_pack.core import find_python_lib_include, check_prefix, BIN_DIR, on_win
 
 from .conftest import (venv_path, venv_system_path,
                        virtualenv_path, virtualenv_system_path,
@@ -17,8 +18,8 @@ from .conftest import (venv_path, venv_system_path,
 
 
 PY2 = sys.version_info.major == 2
-python_lib = os.path.relpath(find_python_lib(virtualenv_path), virtualenv_path)
-site_packages = os.path.join(python_lib, 'site-packages')
+PY_LIB, PY_INCLUDE = find_python_lib_include(virtualenv_path)
+site_packages = os.path.join(PY_LIB, 'site-packages')
 
 
 @pytest.fixture(scope="module")
@@ -29,9 +30,9 @@ def virtualenv_env():
 @pytest.mark.skipif(PY2, reason="Python 2 doesn't support venv")
 @pytest.mark.parametrize('path', [venv_path, venv_system_path])
 def test_check_prefix_venv(path):
-    prefix, kind, _ = check_prefix(path)
-    assert prefix == os.path.abspath(path)
-    assert kind == 'venv'
+    context = check_prefix(path)
+    assert context.prefix == os.path.abspath(path)
+    assert context.kind == 'venv'
 
 
 @pytest.mark.parametrize('path',
@@ -39,9 +40,9 @@ def test_check_prefix_venv(path):
                           os.path.join(rel_env_dir, 'virtualenv'),
                           virtualenv_system_path])
 def test_check_prefix_virtualenv(path):
-    prefix, kind, _ = check_prefix(path)
-    assert prefix == os.path.abspath(path)
-    assert kind == 'virtualenv'
+    context = check_prefix(path)
+    assert context.prefix == os.path.abspath(path)
+    assert context.kind == 'virtualenv'
 
 
 @pytest.mark.parametrize('env_path, env_kind',
@@ -51,9 +52,9 @@ def test_check_prefix_from_env(env_path, env_kind):
     try:
         old = os.environ.get('VIRTUAL_ENV')
         os.environ['VIRTUAL_ENV'] = env_path
-        prefix, kind, _ = check_prefix()
-        assert prefix == env_path
-        assert kind == env_kind
+        context = check_prefix()
+        assert context.prefix == env_path
+        assert context.kind == env_kind
     finally:
         if old is not None:
             os.environ['VIRTUAL_ENV'] = old
@@ -175,6 +176,58 @@ def test_roundtrip(tmpdir, prefix, system):
     assert out == 'Done\n'
 
 
+@pytest.mark.skipif(PY2, reason="Python 2 doesn't support venv")
+def test_venv_python_prefix(tmpdir):
+    env = Env(venv_path)
+    out_path = os.path.join(str(tmpdir), 'environment.tar')
+    python_prefix = os.path.normpath('/new/path/to/python/prefix/')
+    env.pack(out_path, python_prefix=python_prefix)
+
+    with tarfile.open(out_path) as fil:
+        pyvenv_cfg = fil.extractfile('pyvenv.cfg').read().decode()
+        python = fil.getmember(os.path.join(BIN_DIR, 'python'))
+        python3 = fil.getmember(os.path.join(BIN_DIR, 'python3'))
+
+    assert os.path.join(python_prefix, BIN_DIR) in pyvenv_cfg
+    assert python.issym()
+    exename = 'python' if on_win else 'python%d.%d' % sys.version_info[:2]
+    assert python.linkname == os.path.join(python_prefix, BIN_DIR, exename)
+    assert python3.issym()
+    assert python3.linkname == 'python'
+
+
+def test_virtualenv_python_prefix(tmpdir):
+    env = Env(virtualenv_path)
+    out_path = os.path.join(str(tmpdir), 'environment.tar')
+    python_prefix = os.path.normpath('/new/path/to/python/prefix/')
+    env.pack(out_path, python_prefix=python_prefix)
+
+    with tarfile.open(out_path) as fil:
+        extract_path = str(tmpdir)
+        fil.extractall(extract_path)
+
+    with open(os.path.join(extract_path, PY_LIB, 'orig-prefix.txt')) as fil:
+        assert fil.read() == python_prefix
+
+    # Check includes
+    for path in glob(os.path.join(extract_path, PY_INCLUDE + '*')):
+        if os.path.islink(path):
+            assert os.readlink(path).startswith(python_prefix)
+
+    # Check lib
+    for path in glob(os.path.join(extract_path, PY_LIB, '*')):
+        if os.path.islink(path):
+            assert os.readlink(path).startswith(python_prefix)
+
+
+def test_python_prefix_not_absolute_path():
+    with pytest.raises(VenvPackException) as exc:
+        pack(prefix=virtualenv_path,
+             python_prefix='not/absolute')
+
+    assert 'absolute' in str(exc.value)
+
+
 def test_pack_exceptions():
     # Unknown filter type
     with pytest.raises(VenvPackException):
@@ -184,7 +237,7 @@ def test_pack_exceptions():
 
 
 @pytest.mark.slow
-def test_zip64(tmpdir):
+def test_zip64(tmpdir, virtualenv_env):
     # Create an environment that requires ZIP64 extensions, but doesn't use a
     # lot of disk/RAM
     source = os.path.join(str(tmpdir), 'source.txt')
@@ -193,13 +246,7 @@ def test_zip64(tmpdir):
 
     files = [File(source, 'foo%d' % i) for i in range(1 << 16)]
     # Hack to build an env with a large environment
-    large_env = object.__new__(Env)
-    large_env.prefix = 'large'
-    large_env.kind = 'venv'
-    large_env._metadata = {}
-    large_env.files = files
-    large_env._excluded_files = []
-
+    large_env = virtualenv_env._copy_with_files(files, [])
     out_path = os.path.join(str(tmpdir), 'large.zip')
 
     # Errors if ZIP64 disabled
