@@ -43,6 +43,13 @@ def build_parser():
                         default='infer',
                         help=("The archival format to use. By default this is "
                               "inferred by the output file extension."))
+    parser.add_argument("--python-prefix",
+                        metavar="PATH",
+                        help=("If provided, will be used as the new prefix path "
+                              "for linking ``python`` in the packaged "
+                              "environment. Note that this is the path to the "
+                              "*prefix*, not the path to the *executable* (e.g. "
+                              "``/usr/`` not ``/usr/lib/python3.6``)."))
     parser.add_argument("--compress-level",
                         type=int,
                         default=4,
@@ -110,6 +117,7 @@ def main(args=None, pack=pack):
         pack(prefix=args.prefix,
              output=args.output,
              format=args.format,
+             python_prefix=args.python_prefix,
              force=args.force,
              compress_level=args.compress_level,
              zip_symlinks=args.zip_symlinks,

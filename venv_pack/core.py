@@ -43,6 +43,17 @@ SHEBANG_REGEX = (
 BIN_DIR = 'Scripts' if on_win else 'bin'
 
 
+class AttrDict(dict):
+    def __setattr__(self, key, val):
+        self[key] = val
+
+    def __getattr__(self, key):
+        try:
+            return self[key]
+        except KeyError:
+            raise AttributeError(key)
+
+
 class Env(object):
     """A Virtual Environment for packaging.
 
@@ -59,26 +70,33 @@ class Env(object):
     >>> Env().pack(output="environment.tar.gz")
     "/full/path/to/environment.tar.gz"
     """
-    __slots__ = ('prefix', 'files', 'kind', '_metadata', '_excluded_files')
+    __slots__ = ('_context', 'files', '_excluded_files')
 
     def __init__(self, prefix=None):
-        prefix, files, kind, metadata = load_environment(prefix)
+        context, files = load_environment(prefix)
 
-        self.prefix = prefix
+        self._context = context
         self.files = files
-        self.kind = kind
-        self._metadata = metadata
         self._excluded_files = []
 
-    @classmethod
-    def _copy_with_files(cls, orig, files, excluded_files):
-        self = object.__new__(Env)
-        self.prefix = orig.prefix
-        self.kind = orig.kind
-        self._metadata = orig._metadata
-        self.files = files
-        self._excluded_files = excluded_files
-        return self
+    def _copy_with_files(self, files, excluded_files):
+        out = object.__new__(Env)
+        out._context = self._context
+        out.files = files
+        out._excluded_files = excluded_files
+        return out
+
+    @property
+    def prefix(self):
+        return self._context.prefix
+
+    @property
+    def kind(self):
+        return self._context.kind
+
+    @property
+    def orig_prefix(self):
+        return self._context.orig_prefix
 
     def __repr__(self):
         return 'Env<%r, %d files>' % (self.prefix, len(self))
@@ -132,7 +150,7 @@ class Env(object):
                 exclude(f)
             else:
                 include(f)
-        return Env._copy_with_files(self, files, excluded)
+        return self._copy_with_files(files, excluded)
 
     def include(self, pattern):
         """Re-add all excluded files that match ``pattern``
@@ -161,7 +179,7 @@ class Env(object):
                 include(f)
             else:
                 exclude(f)
-        return Env._copy_with_files(self, files, excluded)
+        return self._copy_with_files(files, excluded)
 
     def _output_and_format(self, output=None, format='infer'):
         if output is None and format == 'infer':
@@ -185,8 +203,9 @@ class Env(object):
 
         return output, format
 
-    def pack(self, output=None, format='infer', verbose=False,
-             force=False, compress_level=4, zip_symlinks=False, zip_64=True):
+    def pack(self, output=None, format='infer', python_prefix=None,
+             verbose=False, force=False, compress_level=4, zip_symlinks=False,
+             zip_64=True):
         """Package the virtual environment into an archive file.
 
         Parameters
@@ -197,6 +216,11 @@ class Env(object):
         format : {'infer', 'zip', 'tar.gz', 'tgz', 'tar.bz2', 'tbz2', 'tar'}
             The archival format to use. By default this is inferred by the
             output file extension.
+        python_prefix : str, optional
+            If provided, will be used as the new prefix path for linking
+            ``python`` in the packaged environment. Note that this is the path
+            to the *prefix*, not the path to the *executable* (e.g. ``/usr/``
+            not ``/usr/lib/python3.6``).
         verbose : bool, optional
             If True, progress is reported to stdout. Default is False.
         force : bool, optional
@@ -239,7 +263,7 @@ class Env(object):
                              compress_level=compress_level,
                              zip_symlinks=zip_symlinks,
                              zip_64=zip_64) as arc:
-                    packer = Packer(self, arc)
+                    packer = Packer(self._context, arc, python_prefix)
                     with progressbar(self.files, enabled=verbose) as files:
                         try:
                             for f in files:
@@ -274,8 +298,9 @@ class File(namedtuple('File', ('source', 'target'))):
     pass
 
 
-def pack(prefix=None, output=None, format='infer', verbose=False, force=False,
-         compress_level=4, zip_symlinks=False, zip_64=True, filters=None):
+def pack(prefix=None, output=None, format='infer', python_prefix=None,
+         verbose=False, force=False, compress_level=4, zip_symlinks=False,
+         zip_64=True, filters=None):
     """Package an existing virtual environment into an archive file.
 
     Parameters
@@ -288,6 +313,11 @@ def pack(prefix=None, output=None, format='infer', verbose=False, force=False,
     format : {'infer', 'zip', 'tar.gz', 'tgz', 'tar.bz2', 'tbz2', 'tar'}, optional
         The archival format to use. By default this is inferred by the output
         file extension.
+    python_prefix : str, optional
+        If provided, will be used as the new prefix path for linking ``python``
+        in the packaged environment. Note that this is the path to the
+        *prefix*, not the path to the *executable* (e.g. ``/usr/`` not
+        ``/usr/lib/python3.6``).
     verbose : bool, optional
         If True, progress is reported to stdout. Default is False.
     force : bool, optional
@@ -333,6 +363,7 @@ def pack(prefix=None, output=None, format='infer', verbose=False, force=False,
                 raise VenvPackException("Unknown filter of kind %r" % kind)
 
     return env.pack(output=output, format=format,
+                    python_prefix=python_prefix,
                     verbose=verbose, force=force,
                     compress_level=compress_level,
                     zip_symlinks=zip_symlinks, zip_64=zip_64)
@@ -360,21 +391,56 @@ def check_prefix(prefix=None):
 
 
 def check_venv(prefix):
-    if not os.path.exists(os.path.join(prefix, 'pyvenv.cfg')):
+    pyvenv_cfg = os.path.join(prefix, 'pyvenv.cfg')
+    if not os.path.exists(pyvenv_cfg):
         raise VenvPackException("%r is not a valid virtual environment" % prefix)
-    return prefix, 'venv', find_python_lib(prefix)
+
+    with open(pyvenv_cfg) as fil:
+        for line in fil:
+            key, val = line.split('=')
+            if key.strip().lower() == 'home':
+                orig_prefix = os.path.dirname(val.strip())
+                break
+        else:
+            raise VenvPackException("%r is not a valid virtual "
+                                    "environment" % prefix)
+
+    python_lib, python_include = find_python_lib_include(prefix)
+
+    context = AttrDict()
+
+    context.kind = 'venv'
+    context.prefix = prefix
+    context.orig_prefix = orig_prefix
+    context.py_lib = python_lib
+    context.py_include = python_include
+
+    return context
 
 
 def check_virtualenv(prefix):
-    python_lib = find_python_lib(prefix)
-    if not os.path.exists(os.path.join(python_lib, 'orig-prefix.txt')):
+    python_lib, python_include = find_python_lib_include(prefix)
+
+    orig_prefix_txt = os.path.join(prefix, python_lib, 'orig-prefix.txt')
+    if not os.path.exists(orig_prefix_txt):
         raise VenvPackException("%r is not a valid virtual environment" % prefix)
-    return prefix, 'virtualenv', python_lib
+    with open(orig_prefix_txt) as fil:
+        orig_prefix = fil.read().strip()
+
+    context = AttrDict()
+
+    context.kind = 'virtualenv'
+    context.prefix = prefix
+    context.orig_prefix = orig_prefix
+    context.py_lib = python_lib
+    context.py_include = python_include
+
+    return context
 
 
-def find_python_lib(prefix):
+def find_python_lib_include(prefix):
     if on_win:
-        return os.path.join(prefix, 'Lib/site-packages')
+        return 'Lib', 'Include'
 
     # Ensure there is at most one version of python installed
     pythons = glob.glob(os.path.join(prefix, 'lib', 'python*'))
@@ -386,11 +452,15 @@ def find_python_lib(prefix):
         raise VenvPackException("Unexpected failure, no version of "
                                 "python found in prefix %r" % prefix)
 
-    return pythons[0]
+    python_ver = os.path.basename(pythons[0])
+    return os.path.join('lib', python_ver), os.path.join('include', python_ver)
 
 
-def check_no_editable_packages(prefix, python_lib):
-    pth_files = glob.glob(os.path.join(python_lib, 'site-packages', '*.pth'))
+def check_no_editable_packages(context):
+    pth_files = glob.glob(os.path.join(context.prefix,
+                                       context.py_lib,
+                                       'site-packages',
+                                       '*.pth'))
     editable_packages = set()
     for pth_fil in pth_files:
         dirname = os.path.dirname(pth_fil)
@@ -401,7 +471,7 @@ def check_no_editable_packages(prefix, python_lib):
                 line = line.rstrip()
                 if line:
                     location = os.path.normpath(os.path.join(dirname, line))
-                    if not location.startswith(prefix):
+                    if not location.startswith(context.prefix):
                         editable_packages.add(line)
     if editable_packages:
         msg = ("Cannot pack an environment with editable packages\n"
@@ -414,19 +484,22 @@ def check_no_editable_packages(prefix, python_lib):
 def load_environment(prefix):
     from os.path import relpath, join, isfile, islink
 
-    prefix, kind, python_lib = check_prefix(prefix)
+    context = check_prefix(prefix)
 
-    check_no_editable_packages(prefix, python_lib)
+    check_no_editable_packages(context)
 
     # Files to ignore
     remove = {join(BIN_DIR, f) for f in ['activate', 'activate.csh',
                                          'activate.fish']}
 
-    if kind == 'virtualenv':
-        remove.add(join(python_lib, 'orig-prefix.txt'))
+    if context.kind == 'virtualenv':
+        remove.add(join(context.prefix, context.py_lib, 'orig-prefix.txt'))
+    else:
+        remove.add(join(context.prefix, 'pyvenv.cfg'))
 
     res = []
 
+    prefix = context.prefix
     for fn in os.listdir(prefix):
         full_path = join(prefix, fn)
         if isfile(full_path):
@@ -452,10 +525,7 @@ def load_environment(prefix):
              for p in res
              if not (p in remove or p.endswith('~') or p.endswith('.DS_STORE'))]
 
-    # Extra metadata maybed needed by the packing process
-    metadata = {'python_lib': python_lib}
-
-    return prefix, files, kind, metadata
+    return context, files
 
 
 def rewrite_shebang(data, target, prefix):
@@ -489,14 +559,59 @@ def rewrite_shebang(data, target, prefix):
     return data, False
 
 
+def check_python_prefix(python_prefix, context):
+    if python_prefix is None:
+        return None, []
+
+    if not os.path.isabs(python_prefix):
+        raise VenvPackException("python-prefix must be an absolute path")
+
+    # Remove trailing slashes if present
+    python_prefix = os.path.normpath(python_prefix)
+
+    if context.kind == 'venv':
+        # For venv environments, only need to rewrite python executables
+        exe = os.path.join(context.orig_prefix, BIN_DIR, 'python')
+        if not on_win:
+            new_exe = os.path.join(python_prefix,
+                                   BIN_DIR,
+                                   os.path.basename(context.py_lib))
+        else:
+            new_exe = os.path.join(python_prefix, BIN_DIR, 'python')
+        rewrites = [(exe, new_exe)]
+    else:
+        # For virtualenv environments, need to relink lib and include
+        # Extra "''" is to ensure trailing slash
+        rewrites = [(os.path.join(context.orig_prefix, context.py_lib, ''),
+                     os.path.join(python_prefix, context.py_lib, '')),
+                    (os.path.join(context.orig_prefix, context.py_include),
+                     os.path.join(python_prefix, context.py_include))]
+
+    return python_prefix, rewrites
+
+
 class Packer(object):
-    def __init__(self, env, archive):
-        self.prefix = env.prefix
+    def __init__(self, context, archive, python_prefix):
+        self.context = context
+        self.prefix = context.prefix
         self.archive = archive
 
+        python_prefix, rewrites = check_python_prefix(python_prefix, context)
+        self.python_prefix = python_prefix
+        self.rewrites = rewrites
+
     def add(self, file):
-        if (file.target.startswith(BIN_DIR) and not
-                (os.path.isdir(file.source) or os.path.islink(file.source))):
+        if self.rewrites and os.path.islink(file.source):
+            link_target = os.readlink(file.source)
+            for orig, new in self.rewrites:
+                if link_target.startswith(orig):
+                    self.archive.add_link(file.source,
+                                          link_target.replace(orig, new),
+                                          file.target)
+                    return
+            self.archive.add(file.source, file.target)
+        elif (file.target.startswith(BIN_DIR) and not
+              (os.path.isdir(file.source) or os.path.islink(file.source))):
             with open(file.source, 'rb') as fil:
                 data = fil.read()
             data, _ = rewrite_shebang(data, file.target, self.prefix)
@@ -515,3 +630,26 @@ class Packer(object):
                 source = os.path.join(dirpath, f)
                 target = os.path.join(BIN_DIR, f)
                 self.archive.add(source, target)
+
+        if self.context.kind == 'venv':
+            pyvenv_cfg = os.path.join(self.prefix, 'pyvenv.cfg')
+            if self.python_prefix is None:
+                self.archive.add(pyvenv_cfg, 'pyvenv.cfg')
+            else:
+                with open(pyvenv_cfg) as fil:
+                    data = fil.read()
+                data = data.replace(self.context.orig_prefix,
+                                    self.python_prefix)
+                self.archive.add_bytes(pyvenv_cfg, data.encode(), 'pyvenv.cfg')
+        else:
+            origprefix_txt = os.path.join(self.context.prefix,
+                                          self.context.py_lib,
+                                          'orig-prefix.txt')
+            target = os.path.relpath(origprefix_txt, self.prefix)
+
+            if self.python_prefix is None:
+                self.archive.add(origprefix_txt, target)
+            else:
+                self.archive.add_bytes(origprefix_txt,
+                                       self.python_prefix.encode(),
+                                       target)
