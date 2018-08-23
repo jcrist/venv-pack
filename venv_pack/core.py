@@ -502,7 +502,7 @@ def load_environment(prefix):
     prefix = context.prefix
     for fn in os.listdir(prefix):
         full_path = join(prefix, fn)
-        if isfile(full_path):
+        if isfile(full_path) or islink(full_path):
             res.append(fn)
         else:
             for root, dirs, files in os.walk(full_path):
