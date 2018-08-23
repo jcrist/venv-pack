@@ -10,7 +10,7 @@ from .core import pack, VenvPackException
 
 class MultiAppendAction(argparse.Action):
     def __init__(self, option_strings, dest, nargs=None, **kwargs):
-        if nargs is not None:
+        if nargs is not None:  # pragma: nocover
             raise ValueError("nargs not allowed")
         super(MultiAppendAction, self).__init__(option_strings, dest, **kwargs)
 
@@ -128,10 +128,10 @@ def main(args=None, pack=pack):
         fail("VenvPackError: %s" % e)
     except KeyboardInterrupt as e:  # pragma: nocover
         fail("Interrupted")
-    except Exception as e:
+    except Exception as e:  # pragma: nocover
         fail(traceback.format_exc())
     sys.exit(0)
 
 
-if __name__ == '__main__':
+if __name__ == '__main__':  # pragma: nocover
     main()
