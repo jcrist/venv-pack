@@ -33,6 +33,9 @@ def test_check_prefix_venv(path):
     context = check_prefix(path)
     assert context.prefix == os.path.abspath(path)
     assert context.kind == 'venv'
+    assert context.orig_prefix == sys.exec_prefix
+    assert os.path.exists(os.path.join(context.prefix, context.py_lib))
+    assert os.path.exists(os.path.join(context.orig_prefix, context.py_lib))
 
 
 @pytest.mark.parametrize('path',
@@ -43,6 +46,10 @@ def test_check_prefix_virtualenv(path):
     context = check_prefix(path)
     assert context.prefix == os.path.abspath(path)
     assert context.kind == 'virtualenv'
+    assert context.orig_prefix == sys.exec_prefix
+    assert os.path.exists(os.path.join(context.prefix, context.py_lib))
+    if os.path.exists(os.path.join(context.orig_prefix, context.py_include)):
+        assert os.path.exists(os.path.join(context.prefix, context.py_include))
 
 
 @pytest.mark.parametrize('env_path, env_kind',
@@ -65,9 +72,24 @@ def test_check_prefix_errors():
     with pytest.raises(VenvPackException):
         check_prefix(os.path.join(env_dir, "this_path_doesnt_exist"))
 
-    # Path exists, but isn't a virtual environment
+    # Path exists, but isn't a python environment
     with pytest.raises(VenvPackException):
         check_prefix(os.path.join(env_dir))
+
+    # Path exists, but isn't a virtual environment
+    with pytest.raises(VenvPackException):
+        check_prefix(os.path.join(sys.exec_prefix))
+
+    # Not currently in a virtual environment
+    try:
+        old = os.environ.get('VIRTUAL_ENV')
+        del os.environ['VIRTUAL_ENV']
+
+        with pytest.raises(VenvPackException):
+            check_prefix()
+    finally:
+        if old is not None:
+            os.environ['VIRTUAL_ENV'] = old
 
 
 def test_errors_editable_packages():
@@ -80,6 +102,8 @@ def test_errors_editable_packages():
 def test_env_properties(virtualenv_env):
     assert virtualenv_env.name == 'virtualenv'
     assert virtualenv_env.prefix == virtualenv_path
+    assert virtualenv_env.kind == 'virtualenv'
+    assert virtualenv_env.orig_prefix == sys.exec_prefix
 
     # Env has a length
     assert len(virtualenv_env) == len(virtualenv_env.files)

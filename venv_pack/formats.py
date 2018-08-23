@@ -70,7 +70,12 @@ class ZipArchive(object):
 
     def add_link(self, source, sourcelink, target, st=None):
         if not self.zip_symlinks:
-            raise ValueError("Can't add a symlink with zip-links disabled")
+            # Links aren't supported, add the original file directly. This is
+            # fine, since the target link file must be identical to the source
+            # for relocation to be robust anyway.
+            self.add(source, target)
+            return
+
         if st is None:
             st = os.lstat(source)
         info = zipfile.ZipInfo(target)
@@ -84,7 +89,7 @@ class ZipArchive(object):
         try:
             st = os.lstat(source)
             is_link = stat.S_ISLNK(st.st_mode)
-        except (OSError, AttributeError):
+        except (OSError, AttributeError):  # pragma: nocover
             is_link = False
 
         if is_link:

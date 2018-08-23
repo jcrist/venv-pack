@@ -50,7 +50,7 @@ class AttrDict(dict):
     def __getattr__(self, key):
         try:
             return self[key]
-        except KeyError:
+        except KeyError:  # pragma: nocover
             raise AttributeError(key)
 
 
@@ -401,7 +401,7 @@ def check_venv(prefix):
             if key.strip().lower() == 'home':
                 orig_prefix = os.path.dirname(val.strip())
                 break
-        else:
+        else:  # pragma: nocover
             raise VenvPackException("%r is not a valid virtual "
                                     "environment" % prefix)
 
@@ -466,7 +466,7 @@ def check_no_editable_packages(context):
         dirname = os.path.dirname(pth_fil)
         with open(pth_fil) as pth:
             for line in pth:
-                if line.startswith('#'):
+                if line.startswith('#'):  # pragma: nocover
                     continue
                 line = line.rstrip()
                 if line:
@@ -541,7 +541,7 @@ def rewrite_shebang(data, target, prefix):
     prefix_b = prefix.encode('utf-8')
 
     if shebang_match:
-        if data.count(prefix_b) > 1:
+        if data.count(prefix_b) > 1:  # pragma: nocover
             # More than one occurrence of prefix, can't fully cleanup.
             return data, False
 
