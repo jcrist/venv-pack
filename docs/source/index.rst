@@ -1,9 +1,9 @@
 Venv-Pack
 ==========
 
-``venv-pack`` is a command line tool for creating relocatable `virtual
-environments <https://docs.python.org/3/library/venv.html>`__. This is useful
-for deploying code in a consistent environment.
+``venv-pack`` is a command-line tool for packaging `virtual environments
+<https://docs.python.org/3/library/venv.html>`__ for distribution. This is
+useful for deploying code in a consistent environment.
 
 Supports virtual environments created using:
 
@@ -14,6 +14,13 @@ Supports virtual environments created using:
 
 See `conda-pack <https://conda.github.io/conda-pack/>`__ for a similar tool
 made for `Conda environments <http://conda.io/>`__.
+
+
+.. raw:: html
+
+    <div align="center">
+      <script src="https://asciinema.org/a/197783.js" id="asciicast-197783" async data-speed="2"></script>
+    </div>
 
 
 Installation
@@ -37,10 +44,10 @@ and can always be installed from source.
     $ pip install git+https://github.com/jcrist/venv-pack.git
 
 
-Commandline Usage
+Command-line Usage
 -----------------
 
-``venv-pack`` is primarily a commandline tool. Full CLI docs can be found
+``venv-pack`` is primarily a command-line tool. Full CLI docs can be found
 :doc:`here <cli>`.
 
 One common use case is packing an environment on one machine to distribute to
@@ -86,7 +93,7 @@ API Usage
 
 ``venv-pack`` also provides a Python API, the full documentation of which can
 be found :doc:`here <api>`. The API mostly mirrors that of the ``venv-pack``
-commandline. Repeating the examples from above:
+command-line. Repeating the examples from above:
 
 .. code-block:: python
 
