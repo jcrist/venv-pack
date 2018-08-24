@@ -1,7 +1,7 @@
 Venv-Pack
 ==========
 
-|Build Status| |PyPI Badge|
+|Build Status| |Conda Badge| |PyPI Badge|
 
 ``venv-pack`` is a command-line tool for packaging `virtual environments`_ for
 distribution. Please refer to the documentation_ for more information.
@@ -21,5 +21,7 @@ New BSD. See the
 
 .. |Build Status| image:: https://travis-ci.org/jcrist/venv-pack.svg?branch=master
    :target: https://travis-ci.org/jcrist/venv-pack
+.. |Conda Badge| image:: https://img.shields.io/conda/vn/conda-forge/venv-pack.svg
+   :target: https://anaconda.org/conda-forge/venv-pack
 .. |PyPI Badge| image:: https://img.shields.io/pypi/v/venv-pack.svg
    :target: https://pypi.org/project/venv-pack/
