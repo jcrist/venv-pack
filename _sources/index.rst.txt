@@ -26,6 +26,13 @@ made for `Conda environments <http://conda.io/>`__.
 Installation
 ------------
 
+**Install from Conda-Forge:**
+
+.. code-block:: bash
+
+    $ conda install -c conda-forge venv-pack
+
+
 **Install from PyPI:**
 
 .. code-block:: bash
@@ -37,7 +44,6 @@ Installation
 
 ``venv-pack`` is `available on github <https://github.com/jcrist/venv-pack>`__
 and can always be installed from source.
-
 
 .. code-block:: bash
 
