@@ -72,6 +72,9 @@ def build_parser():
     parser.add_argument("--no-zip-64",
                         action="store_true",
                         help="Disable ZIP64 extensions.")
+    parser.add_argument("--no-shebang-rewrite",
+                        action="store_true",
+                        help="Disable shebang rewriting")
     parser.add_argument("--exclude",
                         action=MultiAppendAction,
                         metavar="PATTERN",
@@ -123,6 +126,7 @@ def main(args=None, pack=pack):
              zip_symlinks=args.zip_symlinks,
              zip_64=not args.no_zip_64,
              verbose=not args.quiet,
+             rewrite_shebang=not args.no_shebang_rewrite,
              filters=args.filters)
     except VenvPackException as e:
         fail("VenvPackError: %s" % e)

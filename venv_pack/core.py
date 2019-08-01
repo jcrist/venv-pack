@@ -205,7 +205,7 @@ class Env(object):
 
     def pack(self, output=None, format='infer', python_prefix=None,
              verbose=False, force=False, compress_level=4, zip_symlinks=False,
-             zip_64=True):
+             zip_64=True,rewrite_shebang=True):
         """Package the virtual environment into an archive file.
 
         Parameters
@@ -240,6 +240,8 @@ class Env(object):
             symlinks*. Default is False. Ignored if format isn't ``zip``.
         zip_64 : bool, optional
             Whether to enable ZIP64 extensions. Default is True.
+        rewrite_shebang : bool, optional
+            Whether to enable shebang rewriting. Default is True.
 
         Returns
         -------
@@ -263,7 +265,7 @@ class Env(object):
                              compress_level=compress_level,
                              zip_symlinks=zip_symlinks,
                              zip_64=zip_64) as arc:
-                    packer = Packer(self._context, arc, python_prefix)
+                    packer = Packer(self._context, arc, python_prefix,rewrite_shebang=rewrite_shebang)
                     with progressbar(self.files, enabled=verbose) as files:
                         try:
                             for f in files:
@@ -300,7 +302,7 @@ class File(namedtuple('File', ('source', 'target'))):
 
 def pack(prefix=None, output=None, format='infer', python_prefix=None,
          verbose=False, force=False, compress_level=4, zip_symlinks=False,
-         zip_64=True, filters=None):
+         zip_64=True, filters=None, rewrite_shebang=True):
     """Package an existing virtual environment into an archive file.
 
     Parameters
@@ -342,6 +344,8 @@ def pack(prefix=None, output=None, format='infer', python_prefix=None,
         ``(kind, pattern)``, where ``kind`` is either ``'exclude'`` or
         ``'include'`` and ``pattern`` is a file pattern. Filters are applied in
         the order specified.
+    rewrite_shebang : bool, optional
+        Whether to enable shebang rewriting. Default is True.
 
     Returns
     -------
@@ -366,7 +370,8 @@ def pack(prefix=None, output=None, format='infer', python_prefix=None,
                     python_prefix=python_prefix,
                     verbose=verbose, force=force,
                     compress_level=compress_level,
-                    zip_symlinks=zip_symlinks, zip_64=zip_64)
+                    zip_symlinks=zip_symlinks, zip_64=zip_64,
+                    rewrite_shebang=rewrite_shebang)
 
 
 def check_prefix(prefix=None):
@@ -591,14 +596,19 @@ def check_python_prefix(python_prefix, context):
 
 
 class Packer(object):
-    def __init__(self, context, archive, python_prefix):
+    def __init__(self, context, archive, python_prefix,rewrite_shebang=True):
         self.context = context
         self.prefix = context.prefix
         self.archive = archive
+        self.rewrite_shebang = rewrite_shebang
 
-        python_prefix, rewrites = check_python_prefix(python_prefix, context)
-        self.python_prefix = python_prefix
-        self.rewrites = rewrites
+        if rewrite_shebang:
+            python_prefix, rewrites = check_python_prefix(python_prefix, context)
+            self.python_prefix = python_prefix
+            self.rewrites = rewrites
+        else:
+            self.python_prefix = None
+            self.rewrites = []
 
     def add(self, file):
         if self.rewrites and os.path.islink(file.source):
@@ -614,7 +624,8 @@ class Packer(object):
               (os.path.isdir(file.source) or os.path.islink(file.source))):
             with open(file.source, 'rb') as fil:
                 data = fil.read()
-            data, _ = rewrite_shebang(data, file.target, self.prefix)
+            if self.rewrite_shebang:
+                data, _ = rewrite_shebang(data, file.target, self.prefix)
             self.archive.add_bytes(file.source, data, file.target)
         else:
             self.archive.add(file.source, file.target)
