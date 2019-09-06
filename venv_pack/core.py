@@ -623,7 +623,7 @@ class Packer(object):
         script_dirs = ['common']
         if on_win:
             # TODO: windows
-            script_dirs.append('nt')
+            pass
         for d in script_dirs:
             dirpath = os.path.join(SCRIPTS, d)
             for f in os.listdir(dirpath):
