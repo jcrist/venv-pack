@@ -20,6 +20,10 @@ jobs:
     - env:
         PYTHON=3.6
         DOCS=true
+    - env:
+        PYTHON=3.7
+    - env:
+        PYTHON=3.8
 
 install:
   - source testing/install_conda.sh
