@@ -620,10 +620,8 @@ class Packer(object):
             self.archive.add(file.source, file.target)
 
     def finish(self):
-        script_dirs = ['common']
-        if on_win:
-            # TODO: windows
-            pass
+        script_dirs = ['common', 'nt']
+
         for d in script_dirs:
             dirpath = os.path.join(SCRIPTS, d)
             for f in os.listdir(dirpath):

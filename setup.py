@@ -23,7 +23,8 @@ setup(name='venv-pack',
       long_description=open('README.rst').read(),
       packages=['venv_pack'],
       package_data={'venv_pack': ['scripts/*',
-                                  'scripts/common/*']},
+                                  'scripts/common/*',
+                                  'scripts/nt/*']},
       entry_points='''
         [console_scripts]
         venv-pack=venv_pack.__main__:main

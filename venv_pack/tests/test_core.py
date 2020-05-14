@@ -326,5 +326,8 @@ def test_pack(tmpdir, virtualenv_env):
     sol = set(f.target for f in filtered.files)
     res = set(paths)
     diff = res.difference(sol)
-    for fil in diff:
-        assert 'activate' in fil
+    venv_bin = 'Scripts\\' if sys.platform == 'win32' else 'bin/'
+    expected = set([venv_bin + 'activate',
+                    venv_bin + 'activate.bat',
+                    venv_bin + 'Activate.ps1'])
+    assert expected == diff
