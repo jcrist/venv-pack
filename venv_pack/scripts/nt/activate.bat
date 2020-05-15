@@ -1,5 +1,17 @@
 @echo off
 
+rem This code copies and modifies the script found at
+rem `venv/scripts/nt/activate.bat` in CPython. This file is subject to the
+rem license at
+rem
+rem    https://docs.python.org/3/license.html
+rem
+rem and is under copyright by the Python Software Foundation
+rem
+rem    Copyright 2001-2018 Python Software Foundation; All Rights Reserved
+rem
+rem The full license text can be found at `venv_pack/scripts/CPYTHON_LICENSE.txt
+
 rem This file is UTF-8 encoded, so we need to update the current code page while executing it
 for /f "tokens=2 delims=:." %%a in ('"%SystemRoot%\System32\chcp.com"') do (
     set _OLD_CODEPAGE=%%a

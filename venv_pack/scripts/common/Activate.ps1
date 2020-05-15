@@ -1,3 +1,15 @@
+# This code is a copy of the script found at
+# `venv/scripts/common/Activate.ps1` in CPython. This file is subject to the
+# license at
+#
+#    https://docs.python.org/3/license.html
+#
+# and is under copyright by the Python Software Foundation
+#
+#    Copyright 2001-2018 Python Software Foundation; All Rights Reserved
+#
+# The full license text can be found at `venv_pack/scripts/CPYTHON_LICENSE.txt
+
 <#
 .Synopsis
 Activate a Python virtual environment for the current PowerShell session.
