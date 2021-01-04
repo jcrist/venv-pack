@@ -1,5 +1,6 @@
 from __future__ import absolute_import, print_function
 
+import warnings
 import glob
 import os
 import re
@@ -204,8 +205,8 @@ class Env(object):
         return output, format
 
     def pack(self, output=None, format='infer', python_prefix=None,
-             verbose=False, force=False, compress_level=4, zip_symlinks=False,
-             zip_64=True):
+             verbose=False, force=False, compress_level=4,
+             keep_symlinks=False, zip_64=True):
         """Package the virtual environment into an archive file.
 
         Parameters
@@ -230,7 +231,7 @@ class Env(object):
             The compression level to use, from 0 to 9. Higher numbers decrease
             output file size at the expense of compression time. Ignored for
             ``format='zip'``. Default is 4.
-        zip_symlinks : bool, optional
+        keep_symlinks : bool, optional
             Symbolic links aren't supported by the Zip standard, but are
             supported by *many* common Zip implementations. If True, store
             symbolic links in the archive, instead of the file referred to
@@ -261,7 +262,7 @@ class Env(object):
             with os.fdopen(fd, 'wb') as temp_file:
                 with archive(temp_file, format,
                              compress_level=compress_level,
-                             zip_symlinks=zip_symlinks,
+                             keep_symlinks=keep_symlinks,
                              zip_64=zip_64) as arc:
                     packer = Packer(self._context, arc, python_prefix)
                     with progressbar(self.files, enabled=verbose) as files:
@@ -299,8 +300,8 @@ class File(namedtuple('File', ('source', 'target'))):
 
 
 def pack(prefix=None, output=None, format='infer', python_prefix=None,
-         verbose=False, force=False, compress_level=4, zip_symlinks=False,
-         zip_64=True, filters=None):
+         verbose=False, force=False, compress_level=4, zip_symlinks=None,
+         zip_64=True, filters=None, keep_symlinks=False):
     """Package an existing virtual environment into an archive file.
 
     Parameters
@@ -335,6 +336,10 @@ def pack(prefix=None, output=None, format='infer', python_prefix=None,
         resulting archive may silently fail on decompression if the ``unzip``
         implementation doesn't support symlinks*. Default is False. Ignored if
         format isn't ``zip``.
+
+        .. deprecated:: 0.3.0
+          `zip_symlinks` will be removed in venv-pack 1.0.0, it is replaced by
+          `keep_symlinks` because the latter works also with other formats.
     zip_64 : bool, optional
         Whether to enable ZIP64 extensions. Default is True.
     filters : list, optional
@@ -342,6 +347,14 @@ def pack(prefix=None, output=None, format='infer', python_prefix=None,
         ``(kind, pattern)``, where ``kind`` is either ``'exclude'`` or
         ``'include'`` and ``pattern`` is a file pattern. Filters are applied in
         the order specified.
+    keep_symlinks : bool, optional
+        If True, the output archive stores symbolic links in the archive,
+        instead of the file referred to by the link. This can
+        avoid storing multiple copies of the same files. *Note that the
+        resulting archive may silently fail on decompression if the ``unzip``
+        implementation doesn't support symlinks*.
+        If False, the output archive stores the files referred by the links.
+        Default is False.
 
     Returns
     -------
@@ -362,11 +375,20 @@ def pack(prefix=None, output=None, format='infer', python_prefix=None,
             else:
                 raise VenvPackException("Unknown filter of kind %r" % kind)
 
+    # For a backward compatibility.
+    if zip_symlinks is not None:
+        warnings.warn(
+            "'zip_symlinks' will be removed in venv-pack 1.0.0, it is "
+            "replaced by 'keep_symlinks' because the latter works also "
+            "with other formats.", FutureWarning)
+        if format == 'zip':
+            keep_symlinks = zip_symlinks
+
     return env.pack(output=output, format=format,
                     python_prefix=python_prefix,
                     verbose=verbose, force=force,
                     compress_level=compress_level,
-                    zip_symlinks=zip_symlinks, zip_64=zip_64)
+                    keep_symlinks=keep_symlinks, zip_64=zip_64)
 
 
 def check_prefix(prefix=None):

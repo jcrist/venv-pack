@@ -59,16 +59,8 @@ def build_parser():
                               "``format='zip'``. Default is 4."))
     parser.add_argument("--zip-symlinks",
                         action="store_true",
-                        help=("Symbolic links aren't supported by the Zip "
-                              "standard, but are supported by *many* common "
-                              "Zip implementations. If set, store symbolic "
-                              "links in the archive, instead of the file "
-                              "referred to by the link. This can avoid storing "
-                              "multiple copies of the same files. *Note that "
-                              "the resulting archive may silently fail on "
-                              "decompression if the ``unzip`` implementation "
-                              "doesn't support symlinks*. Ignored if format "
-                              "isn't ``zip``."))
+                        help=argparse.SUPPRESS,
+                        default=None)  # Deprecated.
     parser.add_argument("--no-zip-64",
                         action="store_true",
                         help="Disable ZIP64 extensions.")
@@ -93,6 +85,17 @@ def build_parser():
     parser.add_argument("--version",
                         action='store_true',
                         help="Show version then exit")
+    parser.add_argument("--keep-symlinks",
+                        action="store_true",
+                        help=("If set, the output archive stores symbolic "
+                              "links in the archive, instead of the file "
+                              "referred to by the link. This can avoid "
+                              "storing multiple copies of the same files. "
+                              "*Note that the resulting archive may silently "
+                              "fail on decompression if the ``unzip`` "
+                              "implementation doesn't support symlinks*. By "
+                              "default, the output archive stores the files "
+                              "referred by the links."))
     return parser
 
 
@@ -123,7 +126,8 @@ def main(args=None, pack=pack):
              zip_symlinks=args.zip_symlinks,
              zip_64=not args.no_zip_64,
              verbose=not args.quiet,
-             filters=args.filters)
+             filters=args.filters,
+             keep_symlinks=args.keep_symlinks)
     except VenvPackException as e:
         fail("VenvPackError: %s" % e)
     except KeyboardInterrupt:  # pragma: nocover

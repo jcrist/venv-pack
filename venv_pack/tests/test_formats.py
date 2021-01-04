@@ -85,14 +85,17 @@ def has_infozip():
     return "Info-ZIP" in out
 
 
-@pytest.mark.parametrize('format, symlinks',
-                         [('zip', False),
-                          ('zip', True),
+@pytest.mark.parametrize('format, keep_symlinks',
+                         [('zip', True),
+                          ('zip', False),
                           ('tar.gz', True),
+                          ('tar.gz', False),
                           ('tar.bz2', True),
-                          ('tar', True)])
-def test_format(tmpdir, format, symlinks, root_and_paths):
-    if 'zip' and symlinks and not has_infozip():
+                          ('tar.bz2', False),
+                          ('tar', True),
+                          ('tar', False)])
+def test_format(tmpdir, format, keep_symlinks, root_and_paths):
+    if 'zip' and keep_symlinks and not has_infozip():
         pytest.skip("Info-ZIP not installed")
 
     root, paths = root_and_paths
@@ -102,13 +105,13 @@ def test_format(tmpdir, format, symlinks, root_and_paths):
     os.mkdir(out_dir)
 
     with open(out_path, mode='wb') as fil:
-        with archive(fil, format, zip_symlinks=symlinks) as arc:
+        with archive(fil, format, keep_symlinks=keep_symlinks) as arc:
             for rel in paths:
                 arc.add(join(root, rel), rel)
             arc.add_bytes(join(root, "file"),
                           b"foo bar",
                           join("dir", "from_bytes"))
-            if symlinks:
+            if keep_symlinks:
                 arc.add_link(join(root, "link_to_file"),
                              join("dir", "one"),
                              "manual_link_to_file")
@@ -117,7 +120,7 @@ def test_format(tmpdir, format, symlinks, root_and_paths):
                              "manual_link_to_dir")
 
     if format == 'zip':
-        if symlinks:
+        if keep_symlinks:
             check_output(['unzip', out_path, '-d', out_dir])
         else:
             with zipfile.ZipFile(out_path) as out:
@@ -126,12 +129,12 @@ def test_format(tmpdir, format, symlinks, root_and_paths):
         with tarfile.open(out_path) as out:
             out.extractall(out_dir)
 
-    check(out_dir, links=symlinks)
+    check(out_dir, links=keep_symlinks)
     assert isfile(join(out_dir, "dir", "from_bytes"))
     with open(join(out_dir, "dir", "from_bytes"), 'rb') as fil:
         assert fil.read() == b"foo bar"
 
-    if symlinks:
+    if keep_symlinks:
         checklink(join(out_dir, "manual_link_to_dir"), "empty_dir")
         checklink(join(out_dir, "manual_link_to_file"),
                   join("dir", "one"))
