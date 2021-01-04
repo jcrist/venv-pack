@@ -13,18 +13,20 @@ _tar_mode = {'tar.gz': 'w:gz',
              'tar': 'w'}
 
 
-def archive(fileobj, format, compress_level=4, zip_symlinks=False, zip_64=True):
+def archive(fileobj, format, compress_level=4, keep_symlinks=False, zip_64=True):
     if format == 'zip':
-        return ZipArchive(fileobj, zip_symlinks=zip_symlinks, zip_64=zip_64)
+        return ZipArchive(fileobj, zip_symlinks=keep_symlinks, zip_64=zip_64)
     else:
-        return TarArchive(fileobj, _tar_mode[format], compress_level)
+        return TarArchive(
+            fileobj, _tar_mode[format], compress_level, keep_symlinks)
 
 
 class TarArchive(object):
-    def __init__(self, fileobj, mode, compress_level):
+    def __init__(self, fileobj, mode, compress_level, keep_symlinks):
         self.fileobj = fileobj
         self.mode = mode
         self.compress_level = compress_level
+        self.keep_symlinks = keep_symlinks
 
     def __enter__(self):
         if self.mode != 'w':
@@ -32,15 +34,24 @@ class TarArchive(object):
         else:
             kwargs = {}
 
-        self.archive = tarfile.open(fileobj=self.fileobj, mode=self.mode,
-                                    dereference=False, **kwargs)
+        self.archive = tarfile.open(
+            fileobj=self.fileobj, mode=self.mode,
+            dereference=not self.keep_symlinks, **kwargs)
         return self
 
     def __exit__(self, *args):
         self.archive.close()
 
     def add(self, source, target):
-        self.archive.add(source, target, recursive=False)
+        try:
+            st = os.lstat(source)
+            is_link = stat.S_ISLNK(st.st_mode)
+        except (OSError, AttributeError):  # pragma: nocover
+            is_link = False
+
+        should_recursively_copy = (
+            is_link and not self.keep_symlinks and os.path.isdir(source))
+        self.archive.add(source, target, recursive=should_recursively_copy)
 
     def add_bytes(self, source, sourcebytes, target):
         info = self.archive.gettarinfo(source, target)
@@ -48,6 +59,11 @@ class TarArchive(object):
         self.archive.addfile(info, BytesIO(sourcebytes))
 
     def add_link(self, source, sourcelink, target):
+        if not self.keep_symlinks:
+            # Add the original file directly, see `ZipArchive.add_link`.
+            self.add(source, target)
+            return
+
         info = self.archive.gettarinfo(source, target)
         info.linkname = sourcelink
         self.archive.addfile(info)

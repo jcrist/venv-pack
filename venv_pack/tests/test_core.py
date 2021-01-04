@@ -201,11 +201,12 @@ def test_roundtrip(tmpdir, prefix, system):
 
 
 @pytest.mark.skipif(PY2, reason="Python 2 doesn't support venv")
-def test_venv_python_prefix(tmpdir):
+@pytest.mark.parametrize('keep_symlinks', [False, True])
+def test_venv_python_prefix(tmpdir, keep_symlinks):
     env = Env(venv_path)
     out_path = os.path.join(str(tmpdir), 'environment.tar')
     python_prefix = os.path.normpath('/new/path/to/python/prefix/')
-    env.pack(out_path, python_prefix=python_prefix)
+    env.pack(out_path, python_prefix=python_prefix, keep_symlinks=keep_symlinks)
 
     with tarfile.open(out_path) as fil:
         pyvenv_cfg = fil.extractfile('pyvenv.cfg').read().decode()
@@ -213,18 +214,23 @@ def test_venv_python_prefix(tmpdir):
         python3 = fil.getmember(os.path.join(BIN_DIR, 'python3'))
 
     assert os.path.join(python_prefix, BIN_DIR) in pyvenv_cfg
-    assert python.issym()
-    exename = 'python' if on_win else 'python%d.%d' % sys.version_info[:2]
-    assert python.linkname == os.path.join(python_prefix, BIN_DIR, exename)
-    assert python3.issym()
-    assert python3.linkname == 'python'
+    if keep_symlinks:
+        assert python.issym()
+        exename = 'python' if on_win else 'python%d.%d' % sys.version_info[:2]
+        assert python.linkname == os.path.join(python_prefix, BIN_DIR, exename)
+        assert python3.issym()
+        assert python3.linkname == 'python'
+    else:
+        assert python.isfile()
+        assert python3.isfile()
+        assert python3.name.endswith("python3")
 
 
 def test_virtualenv_python_prefix(tmpdir):
     env = Env(virtualenv_path)
     out_path = os.path.join(str(tmpdir), 'environment.tar')
     python_prefix = os.path.normpath('/new/path/to/python/prefix/')
-    env.pack(out_path, python_prefix=python_prefix)
+    env.pack(out_path, python_prefix=python_prefix, keep_symlinks=True)
 
     with tarfile.open(out_path) as fil:
         extract_path = str(tmpdir)
