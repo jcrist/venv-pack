@@ -180,7 +180,26 @@ def test_roundtrip(tmpdir, prefix, system):
             assert not member.startswith(os.path.sep)
 
         extract_path = str(tmpdir)
-        fil.extractall(extract_path)
+        def is_within_directory(directory, target):
+            
+            abs_directory = os.path.abspath(directory)
+            abs_target = os.path.abspath(target)
+        
+            prefix = os.path.commonprefix([abs_directory, abs_target])
+            
+            return prefix == abs_directory
+        
+        def safe_extract(tar, path=".", members=None, *, numeric_owner=False):
+        
+            for member in tar.getmembers():
+                member_path = os.path.join(path, member.name)
+                if not is_within_directory(path, member_path):
+                    raise Exception("Attempted Path Traversal in Tar File")
+        
+            tar.extractall(path, members, numeric_owner=numeric_owner) 
+            
+        
+        safe_extract(fil, extract_path)
 
     # Shebang rewriting happens before prefixes are fixed
     textfile = os.path.join(extract_path, 'bin', 'pip')
@@ -228,7 +247,26 @@ def test_virtualenv_python_prefix(tmpdir):
 
     with tarfile.open(out_path) as fil:
         extract_path = str(tmpdir)
-        fil.extractall(extract_path)
+        def is_within_directory(directory, target):
+            
+            abs_directory = os.path.abspath(directory)
+            abs_target = os.path.abspath(target)
+        
+            prefix = os.path.commonprefix([abs_directory, abs_target])
+            
+            return prefix == abs_directory
+        
+        def safe_extract(tar, path=".", members=None, *, numeric_owner=False):
+        
+            for member in tar.getmembers():
+                member_path = os.path.join(path, member.name)
+                if not is_within_directory(path, member_path):
+                    raise Exception("Attempted Path Traversal in Tar File")
+        
+            tar.extractall(path, members, numeric_owner=numeric_owner) 
+            
+        
+        safe_extract(fil, extract_path)
 
     with open(os.path.join(extract_path, PY_LIB, 'orig-prefix.txt')) as fil:
         assert fil.read() == python_prefix
